@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/auth_providers.dart';
 
 class ProfileDrawer extends ConsumerWidget {
@@ -49,15 +50,16 @@ class ProfileDrawer extends ConsumerWidget {
             leading: const Icon(Icons.person_outline),
             title: const Text('Profile'),
             onTap: () {
-              // TODO: Navigate to full profile edit page later
-              Navigator.pop(context); // Close drawer
+              Navigator.pop(context); // Close drawer first
+              GoRouter.of(context).push('/profile');  // Navigate
             },
           ),
           ListTile(
             leading: const Icon(Icons.settings_outlined),
             title: const Text('Settings'),
             onTap: () {
-              Navigator.pop(context);
+              Navigator.pop(context); // Close drawer first
+              GoRouter.of(context).push('/settings'); // Navigate
             },
           ),
           

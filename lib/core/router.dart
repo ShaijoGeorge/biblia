@@ -1,3 +1,4 @@
+import 'package:biblia/features/auth/providers/auth_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +9,8 @@ import '../features/reading/screens/old_testament_screen.dart';
 import '../features/reading/screens/new_testament_screen.dart';
 import '../features/reading/screens/chapters_screen.dart';
 import '../features/auth/screens/login_screen.dart';
-import '../features/auth/providers/auth_providers.dart';
+import '../features/auth/screens/profile_screen.dart';
+import '../features/settings/screens/settings_screen.dart';
 
 // 1. Create a Global Key for the Root Navigator
 // This key allows us to push screens *over* the bottom navigation bar
@@ -77,6 +79,20 @@ final routerProvider = Provider<GoRouter>((ref) {
           final book = kBibleBooks.firstWhere((b) => b.id == bookId);
           return ChaptersScreen(book: book);
         },
+      ),
+
+      // Profile Route
+      GoRoute(
+        path: '/profile',
+        parentNavigatorKey: _rootNavigatorKey, // Cover the tabs
+        builder: (context, state) => const ProfileScreen(),
+      ),
+
+      // Settings Route
+      GoRoute(
+        path: '/settings',
+        parentNavigatorKey: _rootNavigatorKey, // Cover the tabs
+        builder: (context, state) => const SettingsScreen(),
       ),
     ],
   );
