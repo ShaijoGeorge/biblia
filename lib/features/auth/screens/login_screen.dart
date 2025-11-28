@@ -15,7 +15,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  
+
   bool _isSignUp = false; // Toggle between Login and Sign Up
   bool _isLoading = false;
 
@@ -26,7 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final auth = ref.read(authRepositoryProvider);
-      
+
       if (_isSignUp) {
         await auth.signUp(
           _emailController.text.trim(),
@@ -83,7 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                 ),
                 const Gap(32),
-                
+
                 // Name Field (Only for Sign Up)
                 if (_isSignUp) ...[
                   TextFormField(
@@ -108,8 +108,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.email),
                   ),
-                  validator: (value) =>
-                      value!.contains('@') ? null : 'Please enter a valid email',
+                  validator: (value) => value!.contains('@')
+                      ? null
+                      : 'Please enter a valid email',
                 ),
                 const Gap(16),
 
@@ -140,7 +141,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
+                      : Text(_isSignUp ? 'Sign Up' : 'Log In'),
                 ),
                 const Gap(16),
 
@@ -148,7 +149,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 TextButton(
                   onPressed: () => setState(() => _isSignUp = !_isSignUp),
                   child: Text(_isSignUp
-                      ? 'Already have an account? Sign In'
+                      ? 'Already have an account? Log In'
                       : 'New to Biblia? Create Account'),
                 ),
               ],
