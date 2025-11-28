@@ -14,31 +14,33 @@ dependencies:
   cupertino_icons: ^1.0.8
   google_fonts: ^6.1.0          # Beautiful typography
   dashed_circular_progress_bar: ^0.0.6
-  fl_chart: ^0.66.0             # For detailed graphs/stats
+  fl_chart: ^1.1.1             # For detailed graphs/stats
   gap: ^3.0.0                   # Easier spacing than SizedBox
 
   # --- State Management ---
-  flutter_riverpod: ^2.4.9
-  riverpod_annotation: ^2.3.3
+  flutter_riverpod: ^3.0.3
+  riverpod_annotation: ^3.0.3
 
   # --- Navigation ---
-  go_router: ^13.0.0
+  go_router: ^17.0.0
 
   # --- Data & Backend ---
   supabase_flutter: ^2.3.0      # Cloud Sync
-  isar: ^3.1.0                  # Local Database
-  isar_flutter_libs: ^3.1.0     # Isar binaries
+  isar_community: ^3.3.0                  # Local Database
+  isar_community_flutter_libs: ^3.3.0    # Isar binaries
   path_provider: ^2.1.2         # To find where to save files
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
   
   # --- Code Generation ---
   build_runner: ^2.4.8          
-  riverpod_generator: ^2.3.9
-  isar_generator: ^3.1.0
+  riverpod_generator: ^3.0.3
+  isar_community_generator: ^3.3.0
+
+  analyzer: ^7.6.0
 
 flutter:
   uses-material-design: true
