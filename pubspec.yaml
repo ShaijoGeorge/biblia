@@ -32,6 +32,10 @@ dependencies:
   isar_community_flutter_libs: ^3.3.0    # Isar binaries
   path_provider: ^2.1.2         # To find where to save files
 
+  flutter_local_notifications: ^17.0.0
+  timezone: ^0.9.2
+  package_info_plus: ^5.0.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
