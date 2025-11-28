@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/theme.dart';
 
 void main() {
-  runApp(const BibliaApp());
+  // ProviderScope is the entry point of Riverpod. It stores the state of all providers.
+  runApp(const ProviderScope(child: BibliaApp()));
 }
 
 class BibliaApp extends StatelessWidget {
@@ -11,13 +14,18 @@ class BibliaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Biblia',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        useMaterial3: true,
-      ),
+      debugShowCheckedModeBanner: false,
+      
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      
+      // Use system setting to toggle light/dark mode
+      themeMode: ThemeMode.system,
+      
+      // Temp placeholder until build Router
       home: const Scaffold(
         body: Center(
-          child: Text('Biblia Setup'),
+          child: Text('Biblia: Ready for Development'),
         ),
       ),
     );
