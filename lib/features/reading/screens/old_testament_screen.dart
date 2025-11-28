@@ -1,0 +1,28 @@
+import 'package:flutter/material.dart';
+import '../../../data/bible_data.dart';
+import '../widgets/book_grid.dart';
+
+class OldTestamentScreen extends StatelessWidget {
+  const OldTestamentScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Filter the static data to get only OT books
+    final otBooks = kBibleBooks
+        .where((b) => b.testament == Testament.old)
+        .toList();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Old Testament"),
+      ),
+      body: BookGrid(
+        books: otBooks,
+        onBookTap: (book) {
+          // will handle navigation later
+          print("Tapped on ${book.name}"); 
+        },
+      ),
+    );
+  }
+}
