@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/database_service.dart';
 import '../data/bible_repository.dart';
 import '../../../data/local/entities/reading_progress.dart';
@@ -15,7 +16,8 @@ DatabaseService databaseService(Ref ref) {
 @Riverpod(keepAlive: true)
 BibleRepository bibleRepository(Ref ref) {
   final dbService = ref.watch(databaseServiceProvider);
-  return BibleRepository(dbService);
+  // Pass the Supabase Client to the repository
+  return BibleRepository(dbService, Supabase.instance.client);
 }
 
 // 3. Provide the Read Count for a specific Book (e.g. Genesis)
