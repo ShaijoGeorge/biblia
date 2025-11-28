@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:gap/gap.dart';
 import '../../../data/bible_data.dart';
-import '../data/bible_repository.dart';
 import '../providers/reading_providers.dart';
 
 class ChaptersScreen extends ConsumerWidget {
