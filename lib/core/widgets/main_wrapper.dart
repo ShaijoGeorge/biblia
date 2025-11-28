@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/auth/widgets/profile_drawer.dart'; // Import the drawer
 
 class MainWrapper extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -12,17 +13,42 @@ class MainWrapper extends StatelessWidget {
   void _goBranch(int index) {
     navigationShell.goBranch(
       index,
-      // A common pattern when switching branches:
-      // Support jumping to the initial location when tapping the item 
-      // that is already active.
       initialLocation: index == navigationShell.currentIndex,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Determine the title based on the current tab index
+    String title;
+    switch (navigationShell.currentIndex) {
+      case 0:
+        title = 'Old Testament';
+        break;
+      case 1:
+        title = 'Biblia'; // Home Tab
+        break;
+      case 2:
+        title = 'New Testament';
+        break;
+      default:
+        title = 'Biblia';
+    }
+
     return Scaffold(
+      // 1. The Global App Bar
+      appBar: AppBar(
+        title: Text(title),
+        centerTitle: true,
+      ),
+      
+      // 2. The Global Drawer (Hamburger Menu)
+      drawer: const ProfileDrawer(),
+      
+      // 3. The Body (The current tab's content)
       body: navigationShell,
+      
+      // 4. The Bottom Navigation
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: _goBranch,

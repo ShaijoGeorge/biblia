@@ -9,94 +9,90 @@ class StatsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Listen to new UserStats provider
     final statsAsync = ref.watch(userStatsProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Your Progress"),
-      ),
-      body: statsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
-        data: (stats) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
+    // No Scaffold, no AppBar here either
+    return statsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('Error: $err')),
+      data: (stats) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
                 // The Big Circular Progress Bar
-                SizedBox(
-                  width: 220,
-                  height: 220,
-                  child: DashedCircularProgressBar.aspectRatio(
-                    aspectRatio: 1,
-                    valueNotifier: ValueNotifier(stats.totalProgress),
-                    progress: stats.totalProgress,
-                    maxProgress: 100,
-                    corners: StrokeCap.butt,
-                    foregroundColor: Theme.of(context).colorScheme.primary,
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    foregroundStrokeWidth: 15,
-                    backgroundStrokeWidth: 15,
-                    animation: true,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '${stats.totalProgress.toStringAsFixed(1)}%',
-                            style: const TextStyle(
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                            ),
+              SizedBox(
+                width: 220,
+                height: 220,
+                child: DashedCircularProgressBar.aspectRatio(
+                  aspectRatio: 1,
+                  valueNotifier: ValueNotifier(stats.totalProgress),
+                  progress: stats.totalProgress,
+                  maxProgress: 100,
+                  corners: StrokeCap.butt,
+                  foregroundColor: Theme.of(context).colorScheme.primary,
+                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  foregroundStrokeWidth: 15,
+                  backgroundStrokeWidth: 15,
+                  animation: true,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${stats.totalProgress.toStringAsFixed(1)}%',
+                          style: const TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
                           ),
-                          Text(
-                            'Bible Completed',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
+                        ),
+                        Text(
+                          'Bible Completed',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const Gap(40),
+              ),
+              const Gap(40),
 
                 // Stats Grid (Streak & Chapters)
-                Row(
-                  children: [
+              Row(
+                children: [
                     // Streak Card
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.local_fire_department,
-                        iconColor: Colors.orange,
-                        label: "Current Streak",
-                        value: "${stats.streak} Days",
-                      ),
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.local_fire_department,
+                      iconColor: Colors.orange,
+                      label: "Current Streak",
+                      value: "${stats.streak} Days",
                     ),
-                    const Gap(16),
+                  ),
+                  const Gap(16),
                     // Total Read Card
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.auto_stories,
-                        iconColor: Colors.blue,
-                        label: "Chapters Read",
-                        value: "${stats.totalChaptersRead}",
-                      ),
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.auto_stories,
+                      iconColor: Colors.blue,
+                      label: "Chapters Read",
+                      value: "${stats.totalChaptersRead}",
                     ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
 
+// Keep the _StatCard class at the bottom as it was.
 class _StatCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
