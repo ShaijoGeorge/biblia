@@ -36,6 +36,11 @@ const ReadingProgressSchema = CollectionSchema(
       id: 3,
       name: r'readAt',
       type: IsarType.dateTime,
+    ),
+    r'userId': PropertySchema(
+      id: 4,
+      name: r'userId',
+      type: IsarType.string,
     )
   },
   estimateSize: _readingProgressEstimateSize,
@@ -44,6 +49,19 @@ const ReadingProgressSchema = CollectionSchema(
   deserializeProp: _readingProgressDeserializeProp,
   idName: r'id',
   indexes: {
+    r'userId': IndexSchema(
+      id: -2005826577402374815,
+      name: r'userId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'userId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    ),
     r'bookId': IndexSchema(
       id: 3567540928881766442,
       name: r'bookId',
@@ -72,6 +90,7 @@ int _readingProgressEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.userId.length * 3;
   return bytesCount;
 }
 
@@ -85,6 +104,7 @@ void _readingProgressSerialize(
   writer.writeLong(offsets[1], object.chapterNumber);
   writer.writeBool(offsets[2], object.isRead);
   writer.writeDateTime(offsets[3], object.readAt);
+  writer.writeString(offsets[4], object.userId);
 }
 
 ReadingProgress _readingProgressDeserialize(
@@ -98,6 +118,7 @@ ReadingProgress _readingProgressDeserialize(
     chapterNumber: reader.readLong(offsets[1]),
     isRead: reader.readBoolOrNull(offsets[2]) ?? false,
     readAt: reader.readDateTimeOrNull(offsets[3]),
+    userId: reader.readString(offsets[4]),
   );
   object.id = id;
   return object;
@@ -118,6 +139,8 @@ P _readingProgressDeserializeProp<P>(
       return (reader.readBoolOrNull(offset) ?? false) as P;
     case 3:
       return (reader.readDateTimeOrNull(offset)) as P;
+    case 4:
+      return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -220,6 +243,51 @@ extension ReadingProgressQueryWhere
         upper: upperId,
         includeUpper: includeUpper,
       ));
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterWhereClause>
+      userIdEqualTo(String userId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'userId',
+        value: [userId],
+      ));
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterWhereClause>
+      userIdNotEqualTo(String userId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [],
+              upper: [userId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [userId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [userId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'userId',
+              lower: [],
+              upper: [userId],
+              includeUpper: false,
+            ));
+      }
     });
   }
 
@@ -570,6 +638,142 @@ extension ReadingProgressQueryFilter
       ));
     });
   }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterFilterCondition>
+      userIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'userId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterFilterCondition>
+      userIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'userId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterFilterCondition>
+      userIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'userId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterFilterCondition>
+      userIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'userId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterFilterCondition>
+      userIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'userId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterFilterCondition>
+      userIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'userId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterFilterCondition>
+      userIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'userId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterFilterCondition>
+      userIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'userId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterFilterCondition>
+      userIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'userId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterFilterCondition>
+      userIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'userId',
+        value: '',
+      ));
+    });
+  }
 }
 
 extension ReadingProgressQueryObject
@@ -630,6 +834,19 @@ extension ReadingProgressQuerySortBy
       sortByReadAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'readAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterSortBy> sortByUserId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterSortBy>
+      sortByUserIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userId', Sort.desc);
     });
   }
 }
@@ -700,6 +917,19 @@ extension ReadingProgressQuerySortThenBy
       return query.addSortBy(r'readAt', Sort.desc);
     });
   }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterSortBy> thenByUserId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QAfterSortBy>
+      thenByUserIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userId', Sort.desc);
+    });
+  }
 }
 
 extension ReadingProgressQueryWhereDistinct
@@ -726,6 +956,13 @@ extension ReadingProgressQueryWhereDistinct
   QueryBuilder<ReadingProgress, ReadingProgress, QDistinct> distinctByReadAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'readAt');
+    });
+  }
+
+  QueryBuilder<ReadingProgress, ReadingProgress, QDistinct> distinctByUserId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'userId', caseSensitive: caseSensitive);
     });
   }
 }
@@ -759,6 +996,12 @@ extension ReadingProgressQueryProperty
   QueryBuilder<ReadingProgress, DateTime?, QQueryOperations> readAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'readAt');
+    });
+  }
+
+  QueryBuilder<ReadingProgress, String, QQueryOperations> userIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'userId');
     });
   }
 }

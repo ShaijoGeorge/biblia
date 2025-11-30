@@ -4,12 +4,14 @@ part 'reading_progress.g.dart';
 
 @collection
 class ReadingProgress {
-  // We manually set the ID so we can easily find a specific chapter
-  // Logic: (BookID * 1000) + ChapterNumber
-  // Example: Genesis (1) Chapter 5 = 1005
+  // ID is now a hash of UserID + BookID + Chapter
+  // This ensures "User A's Genesis 1" is different from "User B's Genesis 1"
   Id id; 
 
-  @Index() // Indexing makes searching by book fast
+  @Index() 
+  final String userId; // This distinguishes User A from User B
+
+  @Index()
   final int bookId;
 
   final int chapterNumber;
@@ -19,9 +21,24 @@ class ReadingProgress {
   final DateTime? readAt;
 
   ReadingProgress({
+    required this.userId, 
     required this.bookId,
     required this.chapterNumber,
     this.isRead = false,
     this.readAt,
-  }) : id = (bookId * 1000) + chapterNumber;
+  }) : id = fastHash("$userId-$bookId-$chapterNumber"); 
+}
+
+// Helper to generate a unique ID string
+int fastHash(String string) {
+  var hash = 0xcbf29ce484222325;
+  var i = 0;
+  while (i < string.length) {
+    final codeUnit = string.codeUnitAt(i++);
+    hash ^= codeUnit >> 8;
+    hash *= 0x100000001b3;
+    hash ^= codeUnit & 0xFF;
+    hash *= 0x100000001b3;
+  }
+  return hash;
 }
