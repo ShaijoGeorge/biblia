@@ -32,4 +32,14 @@ class AuthRepository {
   Future<void> signOut() async {
     await _supabase.auth.signOut();
   }
+
+  // Update Email
+  Future<void> updateEmail(String newEmail) async {
+    await _supabase.auth.updateUser(UserAttributes(email: newEmail));
+  }
+
+  // Update Password
+  Future<void> updatePassword(String newPassword) async {
+    await _supabase.auth.updateUser(UserAttributes(password: newPassword));
+  }
 }
