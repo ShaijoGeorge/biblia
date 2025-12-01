@@ -3,74 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import '../providers/auth_providers.dart';
 
-class ProfileScreen extends ConsumerStatefulWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  // Helper to show a dialog with a text field
-  Future<void> _showUpdateDialog({
-    required String title,
-    required String label,
-    required TextEditingController controller,
-    required Future<void> Function() onConfirm,
-    bool isPassword = false,
-  }) async {
-    controller.clear();
-    await showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: controller,
-          obscureText: isPassword,
-          decoration: InputDecoration(labelText: label),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext); // Close dialog
-              try {
-                await onConfirm();
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('$title Successful!')),
-                );
-              } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
-                );
-              }
-            },
-            child: const Text('Update'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(authUserProvider);
-    
+
     return userAsync.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (err, stack) => Scaffold(body: Center(child: Text('Error: $err'))),
@@ -88,7 +27,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             child: Column(
               children: [
                 const Gap(20),
-                // Avatar
                 CircleAvatar(
                   radius: 60,
                   backgroundColor: Theme.of(context).colorScheme.primaryContainer,
@@ -102,7 +40,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
                 const Gap(24),
-                // User Info
                 Text(
                   name,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -118,45 +55,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 const Gap(40),
 
-                // --- ACTION BUTTONS ---
+                // --- SECURE ACTION BUTTONS ---
                 
-                // Change Email Button
                 ListTile(
                   leading: const Icon(Icons.email_outlined),
                   title: const Text('Change Email'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => _showUpdateDialog(
-                    title: 'Update Email',
-                    label: 'New Email Address',
-                    controller: _emailController,
-                    onConfirm: () async {
-                      final newEmail = _emailController.text.trim();
-                      if (newEmail.isNotEmpty) {
-                        await ref.read(authRepositoryProvider).updateEmail(newEmail);
-                      }
-                    },
+                  onTap: () => showDialog(
+                    context: context,
+                    builder: (_) => const _ChangeEmailDialog(),
                   ),
                 ),
                 const Divider(),
 
-                // Change Password Button
                 ListTile(
                   leading: const Icon(Icons.lock_outline),
                   title: const Text('Change Password'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => _showUpdateDialog(
-                    title: 'Update Password',
-                    label: 'New Password',
-                    isPassword: true,
-                    controller: _passwordController,
-                    onConfirm: () async {
-                      final newPass = _passwordController.text.trim();
-                      if (newPass.length >= 6) {
-                        await ref.read(authRepositoryProvider).updatePassword(newPass);
-                      } else {
-                        throw "Password must be at least 6 characters";
-                      }
-                    },
+                  onTap: () => showDialog(
+                    context: context,
+                    builder: (_) => const _ChangePasswordDialog(),
                   ),
                 ),
                 const Divider(),
@@ -165,6 +83,205 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+// --- 1. CHANGE EMAIL DIALOG ---
+class _ChangeEmailDialog extends ConsumerStatefulWidget {
+  const _ChangeEmailDialog();
+
+  @override
+  ConsumerState<_ChangeEmailDialog> createState() => _ChangeEmailDialogState();
+}
+
+class _ChangeEmailDialogState extends ConsumerState<_ChangeEmailDialog> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  bool _isObscure = true;
+
+  Future<void> _update() async {
+    final email = _emailController.text.trim();
+    final pass = _passwordController.text.trim();
+
+    if (email.isEmpty || !email.contains('@') || pass.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Invalid input")));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      // 1. Verify Identity
+      await repo.reauthenticate(pass);
+      // 2. Update Email
+      await repo.updateEmail(email);
+      
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Confirmation links sent to your old AND new email."),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("Change Email"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _emailController,
+            decoration: const InputDecoration(
+              labelText: "New Email",
+              prefixIcon: Icon(Icons.email),
+            ),
+          ),
+          const Gap(16),
+          TextField(
+            controller: _passwordController,
+            obscureText: _isObscure,
+            decoration: InputDecoration(
+              labelText: "Current Password",
+              prefixIcon: const Icon(Icons.lock),
+              suffixIcon: IconButton(
+                icon: Icon(_isObscure ? Icons.visibility : Icons.visibility_off),
+                onPressed: () => setState(() => _isObscure = !_isObscure),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+        FilledButton(
+          onPressed: _isLoading ? null : _update,
+          child: _isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator()) : const Text("Update"),
+        ),
+      ],
+    );
+  }
+}
+
+// --- 2. CHANGE PASSWORD DIALOG  ---
+class _ChangePasswordDialog extends ConsumerStatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  ConsumerState<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
+  final _oldPassController = TextEditingController();
+  final _newPassController = TextEditingController();
+  final _confirmPassController = TextEditingController();
+  
+  bool _isLoading = false;
+  bool _obsOld = true;
+  bool _obsNew = true;
+  bool _obsConfirm = true;
+
+  Future<void> _update() async {
+    final oldPass = _oldPassController.text.trim();
+    final newPass = _newPassController.text.trim();
+    final confirmPass = _confirmPassController.text.trim();
+
+    if (newPass.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("New password is too short")));
+      return;
+    }
+    if (newPass != confirmPass) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Passwords do not match")));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      // 1. Verify Old Password
+      await repo.reauthenticate(oldPass);
+      // 2. Update to New Password
+      await repo.updatePassword(newPass);
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Password updated successfully!")));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("Change Password"),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _oldPassController,
+              obscureText: _obsOld,
+              decoration: InputDecoration(
+                labelText: "Current Password",
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(_obsOld ? Icons.visibility : Icons.visibility_off),
+                  onPressed: () => setState(() => _obsOld = !_obsOld),
+                ),
+              ),
+            ),
+            const Gap(16),
+            TextField(
+              controller: _newPassController,
+              obscureText: _obsNew,
+              decoration: InputDecoration(
+                labelText: "New Password",
+                prefixIcon: const Icon(Icons.lock),
+                suffixIcon: IconButton(
+                  icon: Icon(_obsNew ? Icons.visibility : Icons.visibility_off),
+                  onPressed: () => setState(() => _obsNew = !_obsNew),
+                ),
+              ),
+            ),
+            const Gap(16),
+            TextField(
+              controller: _confirmPassController,
+              obscureText: _obsConfirm,
+              decoration: InputDecoration(
+                labelText: "Confirm New Password",
+                prefixIcon: const Icon(Icons.lock),
+                suffixIcon: IconButton(
+                  icon: Icon(_obsConfirm ? Icons.visibility : Icons.visibility_off),
+                  onPressed: () => setState(() => _obsConfirm = !_obsConfirm),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+        FilledButton(
+          onPressed: _isLoading ? null : _update,
+          child: _isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator()) : const Text("Update"),
+        ),
+      ],
     );
   }
 }

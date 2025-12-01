@@ -52,4 +52,16 @@ class AuthRepository {
   Future<void> updatePassword(String newPassword) async {
     await _supabase.auth.updateUser(UserAttributes(password: newPassword));
   }
+
+  // Verify user identity before sensitive changes ---
+  Future<void> reauthenticate(String currentPassword) async {
+    final email = _supabase.auth.currentUser?.email;
+    if (email == null) throw 'User not logged in';
+
+    // Attempt to sign in. If it throws, the password is wrong.
+    await _supabase.auth.signInWithPassword(
+      email: email,
+      password: currentPassword,
+    );
+  }
 }
