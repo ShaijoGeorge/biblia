@@ -55,15 +55,17 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const Gap(40),
 
-                // --- SECURE ACTION BUTTONS ---
+                // --- ACTION BUTTONS (Using Bottom Sheets) ---
                 
                 ListTile(
                   leading: const Icon(Icons.email_outlined),
                   title: const Text('Change Email'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => showDialog(
+                  onTap: () => showModalBottomSheet(
                     context: context,
-                    builder: (_) => const _ChangeEmailDialog(),
+                    isScrollControlled: true, // Allows sheet to expand with keyboard
+                    useSafeArea: true,
+                    builder: (_) => const _ChangeEmailSheet(),
                   ),
                 ),
                 const Divider(),
@@ -72,9 +74,11 @@ class ProfileScreen extends ConsumerWidget {
                   leading: const Icon(Icons.lock_outline),
                   title: const Text('Change Password'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => showDialog(
+                  onTap: () => showModalBottomSheet(
                     context: context,
-                    builder: (_) => const _ChangePasswordDialog(),
+                    isScrollControlled: true,
+                    useSafeArea: true,
+                    builder: (_) => const _ChangePasswordSheet(),
                   ),
                 ),
                 const Divider(),
@@ -87,15 +91,15 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-// --- 1. CHANGE EMAIL DIALOG ---
-class _ChangeEmailDialog extends ConsumerStatefulWidget {
-  const _ChangeEmailDialog();
+// --- 1. CHANGE EMAIL SHEET (Bottom Sheet) ---
+class _ChangeEmailSheet extends ConsumerStatefulWidget {
+  const _ChangeEmailSheet();
 
   @override
-  ConsumerState<_ChangeEmailDialog> createState() => _ChangeEmailDialogState();
+  ConsumerState<_ChangeEmailSheet> createState() => _ChangeEmailSheetState();
 }
 
-class _ChangeEmailDialogState extends ConsumerState<_ChangeEmailDialog> {
+class _ChangeEmailSheetState extends ConsumerState<_ChangeEmailSheet> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -121,7 +125,7 @@ class _ChangeEmailDialogState extends ConsumerState<_ChangeEmailDialog> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Confirmation links sent to your old AND new email."),
+          content: Text("Check your email (both old and new) to confirm."),
         ));
       }
     } catch (e) {
@@ -135,53 +139,84 @@ class _ChangeEmailDialogState extends ConsumerState<_ChangeEmailDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text("Change Email"),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _emailController,
-            decoration: const InputDecoration(
-              labelText: "New Email",
-              prefixIcon: Icon(Icons.email),
-            ),
-          ),
-          const Gap(16),
-          TextField(
-            controller: _passwordController,
-            obscureText: _isObscure,
-            decoration: InputDecoration(
-              labelText: "Current Password",
-              prefixIcon: const Icon(Icons.lock),
-              suffixIcon: IconButton(
-                icon: Icon(_isObscure ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _isObscure = !_isObscure),
+    // This padding handles the keyboard automatically
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Drag Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-        FilledButton(
-          onPressed: _isLoading ? null : _update,
-          child: _isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator()) : const Text("Update"),
+            const Gap(24),
+            
+            Text(
+              "Change Email",
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const Gap(24),
+
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(
+                labelText: "New Email Address",
+                prefixIcon: Icon(Icons.email_outlined),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const Gap(16),
+            TextField(
+              controller: _passwordController,
+              obscureText: _isObscure,
+              decoration: InputDecoration(
+                labelText: "Current Password",
+                prefixIcon: const Icon(Icons.lock_outline),
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: Icon(_isObscure ? Icons.visibility : Icons.visibility_off),
+                  onPressed: () => setState(() => _isObscure = !_isObscure),
+                ),
+              ),
+            ),
+            const Gap(32),
+            FilledButton(
+              onPressed: _isLoading ? null : _update,
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+              child: _isLoading 
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
+                  : const Text("Update Email"),
+            ),
+            const Gap(16),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
-// --- 2. CHANGE PASSWORD DIALOG  ---
-class _ChangePasswordDialog extends ConsumerStatefulWidget {
-  const _ChangePasswordDialog();
+// --- 2. CHANGE PASSWORD SHEET (Bottom Sheet) ---
+class _ChangePasswordSheet extends ConsumerStatefulWidget {
+  const _ChangePasswordSheet();
 
   @override
-  ConsumerState<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+  ConsumerState<_ChangePasswordSheet> createState() => _ChangePasswordSheetState();
 }
 
-class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
+class _ChangePasswordSheetState extends ConsumerState<_ChangePasswordSheet> {
   final _oldPassController = TextEditingController();
   final _newPassController = TextEditingController();
   final _confirmPassController = TextEditingController();
@@ -228,18 +263,43 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text("Change Password"),
-      content: SingleChildScrollView(
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Drag Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Gap(24),
+
+            Text(
+              "Change Password",
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const Gap(24),
+
             TextField(
               controller: _oldPassController,
               obscureText: _obsOld,
               decoration: InputDecoration(
                 labelText: "Current Password",
                 prefixIcon: const Icon(Icons.lock_outline),
+                border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   icon: Icon(_obsOld ? Icons.visibility : Icons.visibility_off),
                   onPressed: () => setState(() => _obsOld = !_obsOld),
@@ -252,7 +312,8 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
               obscureText: _obsNew,
               decoration: InputDecoration(
                 labelText: "New Password",
-                prefixIcon: const Icon(Icons.lock),
+                prefixIcon: const Icon(Icons.key),
+                border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   icon: Icon(_obsNew ? Icons.visibility : Icons.visibility_off),
                   onPressed: () => setState(() => _obsNew = !_obsNew),
@@ -265,23 +326,26 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
               obscureText: _obsConfirm,
               decoration: InputDecoration(
                 labelText: "Confirm New Password",
-                prefixIcon: const Icon(Icons.lock),
+                prefixIcon: const Icon(Icons.check_circle_outline),
+                border: const OutlineInputBorder(),
                 suffixIcon: IconButton(
                   icon: Icon(_obsConfirm ? Icons.visibility : Icons.visibility_off),
                   onPressed: () => setState(() => _obsConfirm = !_obsConfirm),
                 ),
               ),
             ),
+            const Gap(32),
+            FilledButton(
+              onPressed: _isLoading ? null : _update,
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+              child: _isLoading 
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
+                  : const Text("Update Password"),
+            ),
+            const Gap(16),
           ],
         ),
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-        FilledButton(
-          onPressed: _isLoading ? null : _update,
-          child: _isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator()) : const Text("Update"),
-        ),
-      ],
     );
   }
 }
