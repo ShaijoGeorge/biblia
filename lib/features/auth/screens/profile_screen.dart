@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/auth_providers.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -306,7 +307,21 @@ class _ChangePasswordSheetState extends ConsumerState<_ChangePasswordSheet> {
                 ),
               ),
             ),
-            const Gap(16),
+            
+            // --- NEW: FORGOT PASSWORD BUTTON ---
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () {
+                  // Close the bottom sheet first
+                  Navigator.pop(context);
+                  // Navigate to the Forgot Password screen
+                  GoRouter.of(context).push('/forgot-password');
+                },
+                child: const Text('Forgot Password?'),
+              ),
+            ),
+            
             TextField(
               controller: _newPassController,
               obscureText: _obsNew,

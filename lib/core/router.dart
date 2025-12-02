@@ -15,14 +15,16 @@ import '../features/auth/screens/update_password_screen.dart';
 import '../features/auth/screens/profile_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
-
 final routerProvider = Provider<GoRouter>((ref) {
   // Listen to the Supabase Auth Stream directly
   final authStream = Supabase.instance.client.auth.onAuthStateChange;
 
+  // FIX 1 (Continued): Create the key INSIDE the provider.
+  // This ensures a fresh key is generated whenever the Router is rebuilt.
+  final rootNavigatorKey = GlobalKey<NavigatorState>();
+
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/home',
     
     // Refresh the router whenever Auth State changes (Login, Logout, Recovery)
@@ -43,11 +45,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // 2. If LOGGED IN...
       if (isLoggedIn) {
-        // If on the Update Password screen, ALLOW IT.
-        if (isUpdatePasswordRoute) return null;
-
-        // Otherwise, if trying to access Login or Forgot -> Home
-        if (isLoginRoute || isForgotRoute) {
+        // If they are specifically trying to go to Login, send them Home. 
+        if (isLoginRoute) {
           return '/home';
         }
       }
@@ -99,9 +98,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      // Use the local 'rootNavigatorKey' for these routes to cover the tabs
       GoRoute(
         path: '/book/:bookId',
-        parentNavigatorKey: _rootNavigatorKey, 
+        parentNavigatorKey: rootNavigatorKey, 
         builder: (context, state) {
           final bookId = int.parse(state.pathParameters['bookId']!);
           final book = kBibleBooks.firstWhere((b) => b.id == bookId);
@@ -112,14 +112,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Profile Route
       GoRoute(
         path: '/profile',
-        parentNavigatorKey: _rootNavigatorKey, // Cover the tabs
+        parentNavigatorKey: rootNavigatorKey, 
         builder: (context, state) => const ProfileScreen(),
       ),
 
       // Settings Route
       GoRoute(
         path: '/settings',
-        parentNavigatorKey: _rootNavigatorKey, // Cover the tabs
+        parentNavigatorKey: rootNavigatorKey, 
         builder: (context, state) => const SettingsScreen(),
       ),
     ],
