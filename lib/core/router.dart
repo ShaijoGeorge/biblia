@@ -14,6 +14,7 @@ import '../features/auth/screens/forgot_password_screen.dart';
 import '../features/auth/screens/update_password_screen.dart';
 import '../features/auth/screens/profile_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
+import 'widgets/not_found_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   // Listen to the Supabase Auth Stream directly
@@ -29,6 +30,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     
     // Refresh the router whenever Auth State changes (Login, Logout, Recovery)
     refreshListenable: GoRouterRefreshStream(authStream),
+
+    errorBuilder: (context, state) {
+      return NotFoundScreen(error: state.error);
+    },
 
     redirect: (context, state) {
       final session = Supabase.instance.client.auth.currentSession;
