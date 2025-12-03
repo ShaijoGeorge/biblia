@@ -4,6 +4,7 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_providers.dart';
 import '../../../core/utils/app_error_handler.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -17,10 +18,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
+  // FIX: Explicitly use EncryptedSharedPreferences for Android
+  // This solves the issue where data isn't persisted on some devices.
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
+  );
   
   bool _isSignUp = false;
   bool _isLoading = false;
   bool _isPasswordVisible = false;
+  bool _rememberMe = false; 
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
 
   @override
   void dispose() {
@@ -28,6 +44,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _passwordController.dispose();
     _nameController.dispose();
     super.dispose();
+  }
+
+  // Load credentials if they exist
+  Future<void> _loadSavedCredentials() async {
+    try {
+      debugPrint('Reading credentials...');
+      final savedEmail = await _storage.read(key: 'email');
+      final savedPassword = await _storage.read(key: 'password');
+
+      if (savedEmail != null && savedPassword != null) {
+        debugPrint('Credentials found for: $savedEmail');
+        setState(() {
+          _emailController.text = savedEmail;
+          _passwordController.text = savedPassword;
+          _rememberMe = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading credentials: $e');
+    }
   }
 
   Future<void> _submit() async {
@@ -55,7 +91,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
-        // Router will handle the redirect automatically
+
+        // Handle Remember Me Logic (Save AFTER login succeeds)
+        if (_rememberMe) {
+          debugPrint('Saving credentials...');
+          await _storage.write(key: 'email', value: _emailController.text.trim());
+          await _storage.write(key: 'password', value: _passwordController.text.trim());
+        } else {
+          debugPrint('Clearing credentials...');
+          await _storage.delete(key: 'email');
+          await _storage.delete(key: 'password');
+        }
+        // Router handles navigation via auth state change
       }
     } catch (e) {
       if (mounted) {
@@ -165,18 +212,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ? 'Password must be at least 6 characters'
                       : null,
                 ),
-                const Gap(24),
+                const Gap(16),
 
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      GoRouter.of(context).push('/forgot-password');
-                    },
-                    child: const Text('Forgot Password?'),
+                if (!_isSignUp)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _rememberMe,
+                            activeColor: Theme.of(context).colorScheme.primary,
+                            onChanged: (value) {
+                              setState(() {
+                                _rememberMe = value ?? false;
+                              });
+                            },
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Remember Password',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          GoRouter.of(context).push('/forgot-password');
+                        },
+                        child: const Text('Forgot Password?'),
+                      ),
+                    ],
                   ),
-                ),
-                const Gap(8),
+
+                const Gap(24),
 
                 // Submit Button
                 FilledButton(
