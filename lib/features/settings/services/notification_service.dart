@@ -1,10 +1,9 @@
+import 'package:flutter/services.dart'; // Required for MethodChannel
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
-import 'package:flutter_timezone/flutter_timezone.dart';
 
 class NotificationService {
-  // Singleton pattern (only one instance of this class exists)
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
@@ -12,38 +11,39 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
+  // Channel to communicate with Native Code (Android/iOS)
+  static const MethodChannel _platform = MethodChannel('com.example.biblia/timezone');
+
   Future<void> init() async {
-    // Initialize Timezones
     tz.initializeTimeZones();
 
-    // GET DEVICE LOCAL TIMEZONE
+    // 1. GET DEVICE TIMEZONE (Native Call)
     try {
-      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      final String timeZoneName = await _platform.invokeMethod('getLocalTimezone');
       tz.setLocalLocation(tz.getLocation(timeZoneName));
     } catch (e) {
-      // Fallback to UTC if we can't determine the location
+      // Fallback to UTC if native call fails
       tz.setLocalLocation(tz.getLocation('UTC'));
     }
 
-    // Android Settings (Use the app icon)
+    // 2. Android Settings
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // iOS Settings
+    // 3. iOS Settings
     final DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
-      requestAlertPermission: false, // request later
+      requestAlertPermission: false, 
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
 
-    // Initialize Plugin
+    // 4. Initialize Plugin
     await _notificationsPlugin.initialize(
       InitializationSettings(android: androidSettings, iOS: iosSettings),
     );
   }
 
-  // Request Permissions (Required for Android 13+ and iOS)
   Future<void> requestPermissions() async {
     await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
@@ -56,31 +56,28 @@ class NotificationService {
         ?.requestNotificationsPermission();
   }
 
-  // Schedule the Daily Reminder
   Future<void> scheduleDailyReminder(int hour, int minute) async {
-    // First, cancel any existing reminder so we don't have duplicates
     await cancelReminders();
 
     await _notificationsPlugin.zonedSchedule(
-      0, // Notification ID
-      'Bible Reading Time', // Title
-      'Time to read your daily chapters! 📖', // Body
+      0, 
+      'Bible Reading Time', 
+      'Time to read your daily chapters! 📖', 
       _nextInstanceOfTime(hour, minute),
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'daily_reminder', // Channel ID
-          'Daily Reminder', // Channel Name
+          'daily_reminder', 
+          'Daily Reminder', 
           channelDescription: 'Daily Bible reading reminder',
           importance: Importance.max,
           priority: Priority.high,
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      // This ensures it repeats daily at the same time
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time, // REPEAT DAILY
+      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 
@@ -88,7 +85,6 @@ class NotificationService {
     await _notificationsPlugin.cancelAll();
   }
 
-  // Helper to calculate "Next 7:00 AM" (Today or Tomorrow?)
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduledDate =
