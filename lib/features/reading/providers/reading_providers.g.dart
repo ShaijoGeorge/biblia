@@ -49,6 +49,44 @@ final class BibleRepositoryProvider extends $FunctionalProvider<BibleRepository,
 
 String _$bibleRepositoryHash() => r'5a30c2279c0a8fff477c8f224751fc75df275d08';
 
+@ProviderFor(globalProgress)
+const globalProgressProvider = GlobalProgressProvider._();
+
+final class GlobalProgressProvider extends $FunctionalProvider<
+        AsyncValue<List<ReadingProgress>>,
+        List<ReadingProgress>,
+        Stream<List<ReadingProgress>>>
+    with
+        $FutureModifier<List<ReadingProgress>>,
+        $StreamProvider<List<ReadingProgress>> {
+  const GlobalProgressProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'globalProgressProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$globalProgressHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<ReadingProgress>> $createElement(
+          $ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<ReadingProgress>> create(Ref ref) {
+    return globalProgress(ref);
+  }
+}
+
+String _$globalProgressHash() => r'b3ea4eddbdc9ce75d85d6400bc2454ab01e440aa';
+
 @ProviderFor(bookReadCount)
 const bookReadCountProvider = BookReadCountFamily._();
 
@@ -100,7 +138,7 @@ final class BookReadCountProvider
   }
 }
 
-String _$bookReadCountHash() => r'6da6891e418aede2ad0ea2e641bba8f4d20c3ee0';
+String _$bookReadCountHash() => r'c859087e1586a5622d92fc99972608111e698b5b';
 
 final class BookReadCountFamily extends $Family
     with $FunctionalFamilyOverride<Stream<int>, int> {
@@ -178,7 +216,7 @@ final class BookProgressProvider extends $FunctionalProvider<
   }
 }
 
-String _$bookProgressHash() => r'14e6e01524966da8518d7d07441253b7d00928fd';
+String _$bookProgressHash() => r'98018fb7f85fbe32b428516ff98681f38111f2ae';
 
 final class BookProgressFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<ReadingProgress>>, int> {

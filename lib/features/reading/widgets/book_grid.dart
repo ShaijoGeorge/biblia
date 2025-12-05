@@ -4,7 +4,7 @@ import '../../../data/bible_data.dart';
 import '../providers/reading_providers.dart';
 import 'book_progress_card.dart';
 
-class BookGrid extends StatelessWidget {
+class BookGrid extends StatefulWidget {
   final List<BibleBook> books;
   final Function(BibleBook) onBookTap;
 
@@ -15,46 +15,58 @@ class BookGrid extends StatelessWidget {
   });
 
   @override
+  State<BookGrid> createState() => _BookGridState();
+}
+
+class _BookGridState extends State<BookGrid> {
+  // MEMORY: Keeps track of which books have already played their entry animation
+  final Set<int> _hasAnimated = {};
+
+  @override
   Widget build(BuildContext context) {
-    // Responsive Design setup
     final width = MediaQuery.of(context).size.width;
     final crossAxisCount = width > 600 ? 4 : 2;
 
     return GridView.builder(
       padding: const EdgeInsets.all(16),
+      cacheExtent: 500, // Smooth scrolling pre-load
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         childAspectRatio: 1.5,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
       ),
-      itemCount: books.length,
+      itemCount: widget.books.length,
       itemBuilder: (context, index) {
-        final book = books[index];
+        final book = widget.books[index];
 
-        // This Consumer widget listens to the specific provider for *this* book
         return Consumer(
           builder: (context, ref, child) {
-            // Ask Riverpod: "How many chapters read for this book ID?"
             final asyncCount = ref.watch(bookReadCountProvider(book.id));
 
             return asyncCount.when(
-              // If data is loaded, show the real card
               data: (count) => BookProgressCard(
                 book: book,
                 chaptersRead: count,
-                onTap: () => onBookTap(book),
+                onTap: () => widget.onBookTap(book),
+                // LOGIC: Only animate if it's NOT in our memory set
+                shouldAnimateEntry: !_hasAnimated.contains(book.id),
+                onAnimationStarted: () {
+                  // Mark this book as "seen" so it doesn't animate again on scroll
+                  _hasAnimated.add(book.id); 
+                },
               ),
-              // If loading/error, show a placeholder card (0 progress)
               loading: () => BookProgressCard(
                 book: book,
                 chaptersRead: 0,
-                onTap: () {}, // Disable tap while loading
+                onTap: () {},
+                shouldAnimateEntry: false, // Don't animate placeholders
               ),
               error: (_, __) => BookProgressCard(
                 book: book,
                 chaptersRead: 0,
                 onTap: () {},
+                shouldAnimateEntry: false,
               ),
             );
           },

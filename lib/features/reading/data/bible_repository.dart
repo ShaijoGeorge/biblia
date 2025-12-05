@@ -8,7 +8,24 @@ class BibleRepository {
 
   String get _currentUserId => _supabase.auth.currentUser?.id ?? '';
 
-  // 1. Get Realtime Stream for a specific Book
+  // Get Realtime Stream for ALL progress (Single Source of Truth)
+  Stream<List<ReadingProgress>> getAllProgressStream() {
+    final userId = _currentUserId;
+    if (userId.isEmpty) return Stream.value([]);
+
+    return _supabase
+        .from('user_progress')
+        .stream(primaryKey: ['user_id', 'book_id', 'chapter_number'])
+        .map((data) {
+          // Filter for current user only
+          return data
+              .where((row) => row['user_id'] == userId)
+              .map((json) => ReadingProgress.fromJson(json))
+              .toList();
+        });
+  }
+
+  // Get Realtime Stream for a specific Book
   // We stream the data and filter it in Dart to ensure compatibility
   Stream<List<ReadingProgress>> getBookProgressStream(int bookId) {
     final userId = _currentUserId;
