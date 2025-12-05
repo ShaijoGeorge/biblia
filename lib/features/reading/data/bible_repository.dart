@@ -55,18 +55,21 @@ class BibleRepository {
         .from('user_progress')
         .select('chapter_number')
         .eq('user_id', userId)
-        .eq('book_id', bookId);
+        .eq('book_id', bookId)
+        .eq('is_read', true);
     
-    // Create a Set of existing IDs for fast lookup (e.g., {1, 2, 3, 4, 5})
-    final existingChapters = (existingData as List)
+    // Create a Set of chapters that are ALREADY DONE
+    final finishedChapters = (existingData as List)
         .map((e) => e['chapter_number'] as int)
         .toSet();
 
-    // Generate list of ONLY the missing chapters
+    // Identify which chapters need updating (Missing or False)
+    final List<int> chaptersToUpdate = [];
     final List<Map<String, dynamic>> newInserts = [];
     
     for (int i = 1; i <= totalChapters; i++) {
-      if (!existingChapters.contains(i)) {
+      if (!finishedChapters.contains(i)) {
+        chaptersToUpdate.add(i);
         newInserts.add({
           'user_id': userId,
           'book_id': bookId,
@@ -77,10 +80,16 @@ class BibleRepository {
       }
     }
 
-    // Insert only the new ones (Standard Insert, not Upsert)
-    // This avoids "duplicate key" errors since we filtered them out manually.
-    if (newInserts.isNotEmpty) {
-      await _supabase.from('user_progress').insert(newInserts); 
+    if (chaptersToUpdate.isNotEmpty) {
+      // NUCLEAR FIX: Delete the specific "false" rows first
+      // This prevents the "Duplicate Key" error because we remove the conflict manually
+      await _supabase.from('user_progress').delete().match({
+        'user_id': userId,
+        'book_id': bookId,
+      }).inFilter('chapter_number', chaptersToUpdate);
+
+      // Now we can safely INSERT because we know the slots are empty
+      await _supabase.from('user_progress').insert(newInserts);
     }
   }
 
