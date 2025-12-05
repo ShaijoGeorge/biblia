@@ -14,18 +14,14 @@ class DetailedStatsScreen extends ConsumerStatefulWidget {
 }
 
 class _DetailedStatsScreenState extends ConsumerState<DetailedStatsScreen> {
-  bool _isChartAnimated = false;
+  // A unique key generated every time the page opens.
+  // This forces the "Count up" animations to replay on every visit.
+  late UniqueKey _entryKey;
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (mounted) {
-        setState(() {
-          _isChartAnimated = true;
-        });
-      }
-    });
+    _entryKey = UniqueKey();
   }
 
   @override
@@ -56,12 +52,14 @@ class _DetailedStatsScreenState extends ConsumerState<DetailedStatsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _AnimatedTestamentCircle(
+                        key: ValueKey("ot_circle_$_entryKey"),
                         title: "Old Testament",
                         targetProgress: stats.otProgress,
                         color: Colors.orange,
                         scale: 1.3,
                       ),
                       _AnimatedTestamentCircle(
+                        key: ValueKey("nt_circle_$_entryKey"),
                         title: "New Testament",
                         targetProgress: stats.ntProgress,
                         color: Colors.blue,
@@ -79,22 +77,28 @@ class _DetailedStatsScreenState extends ConsumerState<DetailedStatsScreen> {
                   child: Row(
                     children: [
                       Expanded(child: _SummaryCard(
+                        key: ValueKey("ot_card_$_entryKey"),
                         label: "Old Testament",
-                        value: "${stats.otRead}/1074", 
+                        currentValue: stats.otRead,
+                        maxValue: 1074, 
                         color: Colors.orange.shade100,
                         textColor: Colors.orange.shade900,
                       )),
                       const Gap(8),
                       Expanded(child: _SummaryCard(
+                        key: ValueKey("nt_card_$_entryKey"),
                         label: "New Testament", 
-                        value: "${stats.ntRead}/260", 
+                        currentValue: stats.ntRead,
+                        maxValue: 260, 
                         color: Colors.blue.shade100,
                         textColor: Colors.blue.shade900,
                       )),
                       const Gap(8),
                       Expanded(child: _SummaryCard(
+                        key: ValueKey("total_card_$_entryKey"),
                         label: "Total Bible", 
-                        value: "${stats.totalRead}/1334", 
+                        currentValue: stats.totalRead,
+                        maxValue: 1334, 
                         color: Colors.green.shade100,
                         textColor: Colors.green.shade900,
                       )),
@@ -108,83 +112,92 @@ class _DetailedStatsScreenState extends ConsumerState<DetailedStatsScreen> {
                 SizedBox(
                   height: 240, 
                   child: ClipRect(
-                    child: LineChart(
-                      LineChartData(
-                        minY: 0,
-                        maxY: maxY,
-                        gridData: FlGridData(
-                          show: true,
-                          drawVerticalLine: false,
-                          horizontalInterval: maxY / 5,
-                          getDrawingHorizontalLine: (value) => FlLine(
-                            color: Colors.grey.withValues(alpha: 0.1),
-                            strokeWidth: 1,
-                          ),
-                        ),
-                        titlesData: FlTitlesData(
-                          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                          bottomTitles: AxisTitles(
-                            axisNameWidget: const Text("Date", style: TextStyle(fontSize: 10)),
-                            axisNameSize: 20,
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              interval: 1,
-                              reservedSize: 30,
-                              getTitlesWidget: (value, meta) {
-                                final index = value.toInt();
-                                if (index < 0 || index >= stats.last7DaysDates.length) {
-                                  return const SizedBox();
-                                }
-                                final date = stats.last7DaysDates[index];
-                                final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                final label = "${months[date.month - 1]} ${date.day}";
-                                
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    label,
-                                    style: TextStyle(fontSize: 9, color: Colors.grey[600]),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          leftTitles: AxisTitles(
-                            axisNameWidget: const Text("Chapters", style: TextStyle(fontSize: 10)),
-                            axisNameSize: 20,
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              interval: (maxY / 5).ceilToDouble(), 
-                              reservedSize: 30,
-                              getTitlesWidget: (value, meta) => Text(
-                                value.toInt().toString(),
-                                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    // [FIX] Wrapper ensures animation starts ONLY after data loads
+                    child: _AnimatedChartWrapper(
+                      builder: (isAnimated) {
+                        return LineChart(
+                          LineChartData(
+                            minY: 0,
+                            maxY: maxY,
+                            gridData: FlGridData(
+                              show: true,
+                              drawVerticalLine: false,
+                              horizontalInterval: maxY / 5,
+                              getDrawingHorizontalLine: (value) => FlLine(
+                                color: Colors.grey.withValues(alpha: 0.1),
+                                strokeWidth: 1,
                               ),
                             ),
-                          ),
-                        ),
-                        borderData: FlBorderData(show: false),
-                        lineBarsData: [
-                          LineChartBarData(
-                            spots: List.generate(stats.last7DaysCounts.length, (index) {
-                              final count = stats.last7DaysCounts[index].toDouble();
-                              return FlSpot(index.toDouble(), _isChartAnimated ? count : 0);
-                            }),
-                            isCurved: true,
-                            color: Theme.of(context).colorScheme.primary,
-                            barWidth: 2, 
-                            isStrokeCapRound: true,
-                            dotData: const FlDotData(show: true),
-                            belowBarData: BarAreaData(
-                              show: true,
-                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                            titlesData: FlTitlesData(
+                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              bottomTitles: AxisTitles(
+                                axisNameWidget: const Text("Date", style: TextStyle(fontSize: 10)),
+                                axisNameSize: 20,
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  interval: 1,
+                                  reservedSize: 30,
+                                  getTitlesWidget: (value, meta) {
+                                    final index = value.toInt();
+                                    if (index < 0 || index >= stats.last7DaysDates.length) {
+                                      return const SizedBox();
+                                    }
+                                    final date = stats.last7DaysDates[index];
+                                    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                    final label = "${months[date.month - 1]} ${date.day}";
+                                    
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
+                                      child: Text(
+                                        label,
+                                        style: TextStyle(fontSize: 9, color: Colors.grey[600]),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              leftTitles: AxisTitles(
+                                axisNameWidget: const Text("Chapters", style: TextStyle(fontSize: 10)),
+                                axisNameSize: 20,
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  interval: (maxY / 5).ceilToDouble(), 
+                                  reservedSize: 30,
+                                  getTitlesWidget: (value, meta) => Text(
+                                    value.toInt().toString(),
+                                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                  ),
+                                ),
+                              ),
                             ),
+                            borderData: FlBorderData(show: false),
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: List.generate(stats.last7DaysCounts.length, (index) {
+                                  final count = stats.last7DaysCounts[index].toDouble();
+                                  // ANIMATION LOGIC:
+                                  // If isAnimated is false (first frame), show 0.
+                                  // If true (after 50ms), show real count.
+                                  // FlChart animates the transition automatically.
+                                  return FlSpot(index.toDouble(), isAnimated ? count : 0);
+                                }),
+                                isCurved: true,
+                                color: Theme.of(context).colorScheme.primary,
+                                barWidth: 2, 
+                                isStrokeCapRound: true,
+                                dotData: const FlDotData(show: true),
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      duration: const Duration(milliseconds: 1000), 
-                      curve: Curves.easeOutCubic,
+                          duration: const Duration(milliseconds: 1000), 
+                          curve: Curves.easeOutCubic,
+                        );
+                      }
                     ),
                   ),
                 ),
@@ -204,6 +217,34 @@ class _DetailedStatsScreenState extends ConsumerState<DetailedStatsScreen> {
   }
 }
 
+// --- NEW HELPER WIDGET ---
+// This widget waits until it is mounted (data loaded) before triggering
+// the animation flag. This solves the race condition.
+class _AnimatedChartWrapper extends StatefulWidget {
+  final Widget Function(bool isAnimated) builder;
+  const _AnimatedChartWrapper({required this.builder});
+
+  @override
+  State<_AnimatedChartWrapper> createState() => _AnimatedChartWrapperState();
+}
+
+class _AnimatedChartWrapperState extends State<_AnimatedChartWrapper> {
+  bool _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Trigger animation slightly after the widget appears
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(_visible);
+}
+
+// ... _SectionHeader, _AnimatedTestamentCircle, _SummaryCard (Keep unchanged from previous code)
 class _SectionHeader extends StatelessWidget {
   final String title;
   const _SectionHeader({required this.title});
@@ -227,6 +268,7 @@ class _AnimatedTestamentCircle extends StatelessWidget {
   final double scale;
 
   const _AnimatedTestamentCircle({
+    super.key,
     required this.title, 
     required this.targetProgress, 
     required this.color,
@@ -279,13 +321,16 @@ class _AnimatedTestamentCircle extends StatelessWidget {
 
 class _SummaryCard extends StatelessWidget {
   final String label;
-  final String value;
+  final int currentValue;
+  final int maxValue;
   final Color color;
   final Color textColor;
 
   const _SummaryCard({
+    super.key,
     required this.label, 
-    required this.value, 
+    required this.currentValue, 
+    required this.maxValue,
     required this.color,
     required this.textColor,
   });
@@ -301,13 +346,20 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18, 
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
+          TweenAnimationBuilder<int>(
+            tween: IntTween(begin: 0, end: currentValue),
+            duration: const Duration(milliseconds: 1500),
+            curve: Curves.easeOutCubic,
+            builder: (context, animatedValue, _) {
+              return Text(
+                "$animatedValue/$maxValue",
+                style: TextStyle(
+                  fontSize: 18, 
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              );
+            },
           ),
           const Gap(4),
           Text(
