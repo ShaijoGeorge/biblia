@@ -40,11 +40,23 @@ class BookProgressCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // 1. The Progress Bar Layer (Background fill)
-            FractionallySizedBox(
-              widthFactor: progress.clamp(0.0, 1.0), 
-              alignment: Alignment.centerLeft,
-              child: Container(
+            // 1. The Animated Progress Bar Layer
+            TweenAnimationBuilder<double>(
+              // Animate from 0 to current progress on load,
+              // or from current to new progress on update.
+              tween: Tween<double>(begin: 0, end: progress.clamp(0.0, 1.0)),
+              duration: const Duration(milliseconds: 800), // Smooth 0.8s animation
+              curve: Curves.easeOutCubic, // Starts fast, slows down gently
+              builder: (context, value, child) {
+                return FractionallySizedBox(
+                  widthFactor: value, 
+                  alignment: Alignment.centerLeft,
+                  child: child,
+                );
+              },
+              // The colored bar itself
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
                 decoration: BoxDecoration(
                   color: isCompleted 
                       ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3) 
