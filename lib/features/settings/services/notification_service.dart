@@ -1,6 +1,7 @@
 import 'dart:developer' as log;
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 
@@ -11,9 +12,6 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
-
-  static const MethodChannel _platform =
-      MethodChannel('com.example.biblia/timezone');
 
   bool _isInitialized = false;
 
@@ -39,17 +37,11 @@ class NotificationService {
     tz.initializeTimeZones();
 
     try {
-      final timeZoneName =
-          await _platform.invokeMethod<String>('getLocalTimezone');
-      if (timeZoneName != null) {
-        tz.setLocalLocation(tz.getLocation(timeZoneName));
-        log.log('Timezone set to: $timeZoneName',
-            name: 'NotificationService');
-        return;
-      }
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
     } catch (e) {
-      log.log('Failed to get native timezone: $e',
-          name: 'NotificationService');
+      debugPrint('Could not get local timezone: $e');
+      tz.setLocalLocation(tz.getLocation('UTC'));
     }
 
     /// fallback
