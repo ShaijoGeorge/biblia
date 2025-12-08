@@ -1,5 +1,5 @@
 name: biblia
-description: "A modern, offline-first Bible tracking application."
+description: "A modern, Bible tracking application."
 version: 1.0.0+1
 publish_to: 'none'
 

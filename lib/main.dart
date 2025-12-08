@@ -57,7 +57,7 @@ class _BibliaAppState extends ConsumerState<BibliaApp> {
     final settingsAsync = ref.watch(currentSettingsProvider);
 
     return MaterialApp.router(
-      title: 'Biblia',
+      title: 'Verso',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
