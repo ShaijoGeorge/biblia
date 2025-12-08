@@ -44,9 +44,9 @@ class _MainWrapperState extends ConsumerState<MainWrapper> {
     String title;
     switch (widget.navigationShell.currentIndex) {
       case 0: title = 'Old Testament'; break;
-      case 1: title = 'Biblia'; break;
+      case 1: title = 'Verso'; break;
       case 2: title = 'New Testament'; break;
-      default: title = 'Biblia';
+      default: title = 'Verso';
     }
 
     return Scaffold(

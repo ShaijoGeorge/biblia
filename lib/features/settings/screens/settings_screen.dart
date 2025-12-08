@@ -14,13 +14,11 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _version = '';
-  String _debugInfo = 'Loading...';
 
   @override
   void initState() {
     super.initState();
     _loadVersion();
-    _loadDebugInfo();
   }
 
   Future<void> _loadVersion() async {
@@ -29,31 +27,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       setState(() {
         _version = '${info.version} (${info.buildNumber})';
       });
-    }
-  }
-
-  Future<void> _loadDebugInfo() async {
-    try {
-      final notifEnabled = await NotificationService().areNotificationsEnabled();
-      final canSchedule = await NotificationService().canScheduleExactNotifications();
-      final pending = await NotificationService().getPendingNotifications();
-      
-      if (mounted) {
-        setState(() {
-          _debugInfo = '''
-Notifications Enabled: $notifEnabled
-Can Schedule Exact: $canSchedule
-Pending Notifications: ${pending.length}
-${pending.isNotEmpty ? '\nScheduled:\n${pending.map((p) => '  ID ${p.id}: ${p.title}').join('\n')}' : ''}
-''';
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _debugInfo = 'Error loading debug info: $e';
-        });
-      }
     }
   }
 
@@ -77,97 +50,31 @@ ${pending.isNotEmpty ? '\nScheduled:\n${pending.map((p) => '  ID ${p.id}: ${p.ti
     );
 
     if (picked != null) {
-      setState(() => _debugInfo = 'Scheduling...');
-      
       try {
-        // 1. Update Database
         await ref.read(currentSettingsProvider.notifier).updateReminder(
               true,
               picked.hour,
               picked.minute,
             );
 
-        // 2. Schedule Notification
         await NotificationService().scheduleDailyReminder(
           picked.hour,
           picked.minute,
         );
-        
-        // 3. Reload debug info
-        await _loadDebugInfo();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ Reminder set for ${_formatTime(picked.hour, picked.minute)}'),
-              backgroundColor: Colors.green,
-            ),
+            SnackBar(content: Text('Reminder set for ${_formatTime(picked.hour, picked.minute)}')),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Error: ${e.toString()}'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5),
-            ),
+            SnackBar(content: Text('Error scheduling reminder: $e')),
           );
         }
       }
     }
-  }
-
-  Future<void> _testNotification() async {
-    try {
-      await NotificationService().showTestNotification();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Test notification sent!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _showDebugDialog() async {
-    await _loadDebugInfo();
-    
-    if (!mounted) return;
-    
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Debug Information'),
-        content: SingleChildScrollView(
-          child: SelectableText(_debugInfo),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _loadDebugInfo();
-            },
-            child: const Text('Refresh'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -175,16 +82,7 @@ ${pending.isNotEmpty ? '\nScheduled:\n${pending.map((p) => '  ID ${p.id}: ${p.ti
     final settingsAsync = ref.watch(currentSettingsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bug_report),
-            onPressed: _showDebugDialog,
-            tooltip: 'Debug Info',
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Settings')),
       body: settingsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
@@ -249,8 +147,6 @@ ${pending.isNotEmpty ? '\nScheduled:\n${pending.map((p) => '  ID ${p.id}: ${p.ti
                 secondary: const Icon(Icons.notifications_active_outlined),
                 value: settings.isReminderEnabled,
                 onChanged: (bool value) async {
-                  setState(() => _debugInfo = 'Updating...');
-                  
                   try {
                     await ref
                         .read(currentSettingsProvider.notifier)
@@ -268,28 +164,16 @@ ${pending.isNotEmpty ? '\nScheduled:\n${pending.map((p) => '  ID ${p.id}: ${p.ti
                       
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('✅ Daily reminder enabled')),
+                          const SnackBar(content: Text('Daily reminder enabled')),
                         );
                       }
                     } else {
                       await NotificationService().cancelReminders();
-                      
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Reminder disabled')),
-                        );
-                      }
                     }
-                    
-                    await _loadDebugInfo();
                   } catch (e) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('❌ Error: $e'),
-                          backgroundColor: Colors.red,
-                          duration: const Duration(seconds: 5),
-                        ),
+                        SnackBar(content: Text('Error: $e')),
                       );
                     }
                   }
@@ -314,22 +198,13 @@ ${pending.isNotEmpty ? '\nScheduled:\n${pending.map((p) => '  ID ${p.id}: ${p.ti
                   onTap: () => _pickTime(settings.reminderHour, settings.reminderMinute),
                 ),
 
-              if (settings.isReminderEnabled)
-                ListTile(
-                  title: const Text('Test Notification'),
-                  subtitle: const Text('Send a test notification now'),
-                  leading: const Icon(Icons.bug_report),
-                  trailing: const Icon(Icons.send),
-                  onTap: _testNotification,
-                ),
-
               const Divider(),
               const Gap(8),
 
               // --- ABOUT SECTION ---
               ListTile(
                 leading: const Icon(Icons.info_outline),
-                title: const Text('About Biblia'),
+                title: const Text('About Verso'),
                 subtitle: Text('Version $_version'),
               ),
             ],

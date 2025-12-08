@@ -52,7 +52,7 @@ class _BibliaAppState extends ConsumerState<BibliaApp> {
       }
     });
 
-    // Schedule reminders on app start (if enabled)
+    // Re-schedule reminders on app start
     _initializeReminders();
   }
 
@@ -63,7 +63,6 @@ class _BibliaAppState extends ConsumerState<BibliaApp> {
     final settingsAsync = ref.read(currentSettingsProvider);
     settingsAsync.whenData((settings) async {
       if (settings.isReminderEnabled) {
-        print('🔔 Re-scheduling reminders on app start...');
         await NotificationService().scheduleDailyReminder(
           settings.reminderHour,
           settings.reminderMinute,

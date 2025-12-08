@@ -270,7 +270,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: () => setState(() => _isSignUp = !_isSignUp),
                   child: Text(_isSignUp
                       ? 'Already have an account? Log In'
-                      : 'New to Biblia? Create Account'),
+                      : 'New to Verso? Create Account'),
                 ),
               ],
             ),
