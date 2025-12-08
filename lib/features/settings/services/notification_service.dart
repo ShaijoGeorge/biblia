@@ -75,7 +75,6 @@ class NotificationService {
 
     await cancelReminders();
 
-    // Check permissions
     final hasPermission = await requestPermissions();
     if (!hasPermission) {
       throw Exception('Notification permission denied');
@@ -83,10 +82,24 @@ class NotificationService {
 
     final scheduled = _nextInstance(hour, minute);
 
+    // Friendly notification messages (rotates based on day)
+    final messages = [
+      '✨ Ready for today\'s spiritual journey?',
+      '🌟 Your daily dose of wisdom awaits!',
+      '📖 Let\'s dive into God\'s Word together!',
+      '💫 Time to nourish your soul!',
+      '🙏 A few moments with Scripture today?',
+      '⭐ Your reading streak is waiting!',
+      '🌈 Start your day with inspiration!',
+    ];
+    
+    final dayOfWeek = DateTime.now().weekday;
+    final message = messages[dayOfWeek % messages.length];
+
     await _notificationsPlugin.zonedSchedule(
       0,
       'Bible Reading Time 📖',
-      'Time to read your daily chapters!',
+      message,
       scheduled,
       const NotificationDetails(
         android: AndroidNotificationDetails(
@@ -97,6 +110,7 @@ class NotificationService {
           priority: Priority.high,
           playSound: true,
           enableVibration: true,
+          styleInformation: BigTextStyleInformation(''),
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
