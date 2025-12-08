@@ -61,10 +61,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           );
 
       // 2. Schedule Notification
-      await NotificationService().scheduleDailyReminder(
-        picked.hour,
-        picked.minute,
-      );
+      try {
+        await NotificationService().scheduleDailyReminder(
+          picked.hour,
+          picked.minute,
+        );
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Reminder set for ${_formatTime(picked.hour, picked.minute)}')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error scheduling reminder: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  // Test Notification Function
+  Future<void> _testNotification() async {
+    try {
+      await NotificationService().showTestNotification();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Test notification sent! Check your notification tray.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send test: $e')),
+        );
+      }
     }
   }
 
@@ -152,10 +184,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
                   // Update System Notification
                   if (value) {
-                    await NotificationService().scheduleDailyReminder(
-                      settings.reminderHour,
-                      settings.reminderMinute,
-                    );
+                    try {
+                      await NotificationService().scheduleDailyReminder(
+                        settings.reminderHour,
+                        settings.reminderMinute,
+                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Daily reminder enabled')),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e')),
+                        );
+                      }
+                    }
                   } else {
                     await NotificationService().cancelReminders();
                   }
@@ -179,6 +224,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                   onTap: () => _pickTime(settings.reminderHour, settings.reminderMinute),
+                ),
+
+              // TEST NOTIFICATION BUTTON
+              if (settings.isReminderEnabled)
+                ListTile(
+                  title: const Text('Test Notification'),
+                  subtitle: const Text('Send a test notification now'),
+                  leading: const Icon(Icons.bug_report),
+                  trailing: const Icon(Icons.send),
+                  onTap: _testNotification,
                 ),
 
               const Divider(),

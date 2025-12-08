@@ -24,6 +24,9 @@ void main() async {
   // Initialize Notifications
   await NotificationService().init();
 
+  // Request Permissions (Important for Android 13+)
+  await NotificationService().requestPermissions();
+
   runApp(const ProviderScope(child: BibliaApp()));
 }
 
@@ -46,6 +49,25 @@ class _BibliaAppState extends ConsumerState<BibliaApp> {
       if (event == AuthChangeEvent.passwordRecovery) {
         // If we detect a recovery link was clicked, force navigation to Update Password
         ref.read(routerProvider).go('/update-password');
+      }
+    });
+
+    // Schedule reminders on app start (if enabled)
+    _initializeReminders();
+  }
+
+  Future<void> _initializeReminders() async {
+    // Wait for settings to load
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    final settingsAsync = ref.read(currentSettingsProvider);
+    settingsAsync.whenData((settings) async {
+      if (settings.isReminderEnabled) {
+        print('🔔 Re-scheduling reminders on app start...');
+        await NotificationService().scheduleDailyReminder(
+          settings.reminderHour,
+          settings.reminderMinute,
+        );
       }
     });
   }

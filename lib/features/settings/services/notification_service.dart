@@ -1,4 +1,5 @@
-import 'package:flutter/services.dart'; // Required for MethodChannel
+import 'dart:developer' as log;
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
@@ -11,88 +12,203 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  // Channel to communicate with Native Code (Android/iOS)
-  static const MethodChannel _platform = MethodChannel('com.example.biblia/timezone');
+  static const MethodChannel _platform =
+      MethodChannel('com.example.biblia/timezone');
 
+  bool _isInitialized = false;
+
+  /// Initialize the notification plugin
   Future<void> init() async {
-    tz.initializeTimeZones();
+    if (_isInitialized) return;
 
-    // 1. GET DEVICE TIMEZONE (Native Call)
-    try {
-      final String timeZoneName = await _platform.invokeMethod('getLocalTimezone');
-      tz.setLocalLocation(tz.getLocation(timeZoneName));
-    } catch (e) {
-      // Fallback to UTC if native call fails
-      tz.setLocalLocation(tz.getLocation('UTC'));
-    }
+    _initializeTimezone();
 
-    // 2. Android Settings
-    const AndroidInitializationSettings androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    // 3. iOS Settings
-    final DarwinInitializationSettings iosSettings =
-        DarwinInitializationSettings(
-      requestAlertPermission: false, 
-      requestBadgePermission: false,
-      requestSoundPermission: false,
+    final settings = _initSettings();
+    final didInit = await _notificationsPlugin.initialize(
+      settings,
+      onDidReceiveNotificationResponse: _onNotificationTap,
     );
 
-    // 4. Initialize Plugin
-    await _notificationsPlugin.initialize(
-      InitializationSettings(android: androidSettings, iOS: iosSettings),
-    );
+    _isInitialized = didInit ?? false;
+    log.log('Notifications initialized: $_isInitialized',
+        name: 'NotificationService');
   }
 
-  Future<void> requestPermissions() async {
-    await _notificationsPlugin
+  /// Timezone setup
+  Future<void> _initializeTimezone() async {
+    tz.initializeTimeZones();
+
+    try {
+      final timeZoneName =
+          await _platform.invokeMethod<String>('getLocalTimezone');
+      if (timeZoneName != null) {
+        tz.setLocalLocation(tz.getLocation(timeZoneName));
+        log.log('Timezone set to: $timeZoneName',
+            name: 'NotificationService');
+        return;
+      }
+    } catch (e) {
+      log.log('Failed to get native timezone: $e',
+          name: 'NotificationService');
+    }
+
+    /// fallback
+    try {
+      final localName = DateTime.now().timeZoneName;
+      tz.setLocalLocation(tz.getLocation(localName));
+      log.log('Fallback timezone set to: $localName',
+          name: 'NotificationService');
+    } catch (e) {
+      log.log('Fallback to UTC: $e', name: 'NotificationService');
+      tz.setLocalLocation(tz.UTC);
+    }
+  }
+
+  InitializationSettings _initSettings() {
+    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+
+    return const InitializationSettings(android: android, iOS: ios);
+  }
+
+  void _onNotificationTap(NotificationResponse response) {
+    log.log('Notification tapped: ${response.payload}',
+        name: 'NotificationService');
+  }
+
+  /// Ask for permissions (must call before scheduling)
+  Future<bool> requestPermissions() async {
+    /// iOS
+    final ios = await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: true, sound: true);
 
-    await _notificationsPlugin
+    /// Android (Android 13+)
+    final android = await _notificationsPlugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
+
+    final granted = (ios ?? true) && (android ?? true);
+
+    log.log('Notification permissions granted: $granted',
+        name: 'NotificationService');
+
+    return granted;
   }
 
+  /// Check if app is allowed to show notifications
+  Future<bool> areNotificationsEnabled() async {
+    if (!_isInitialized) await init();
+
+    final android = await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.areNotificationsEnabled();
+
+    return android ?? true;
+  }
+
+  /// Daily reminder scheduler
   Future<void> scheduleDailyReminder(int hour, int minute) async {
+    if (!_isInitialized) await init();
+
     await cancelReminders();
 
-    await _notificationsPlugin.zonedSchedule(
-      0, 
-      'Bible Reading Time', 
-      'Time to read your daily chapters! 📖', 
-      _nextInstanceOfTime(hour, minute),
+    final hasPermission = await requestPermissions();
+    if (!hasPermission) {
+      log.log('No permission, cannot schedule reminder',
+          name: 'NotificationService');
+      return;
+    }
+
+    final scheduled = _nextInstance(hour, minute);
+
+    log.log('Scheduling reminder for: $scheduled',
+        name: 'NotificationService');
+
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        0,
+        'Bible Reading Time',
+        'Time to read your daily chapters! 📖',
+        scheduled,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily_reminder',
+            'Daily Reminder',
+            channelDescription: 'Daily Bible reading reminder',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+          ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+
+      log.log('Daily reminder scheduled successfully!',
+          name: 'NotificationService');
+    } catch (e, st) {
+      log.log('Failed to schedule reminder: $e',
+          name: 'NotificationService', error: e, stackTrace: st);
+      rethrow;
+    }
+  }
+
+  /// Cancel all scheduled notifications
+  Future<void> cancelReminders() async {
+    if (!_isInitialized) await init();
+    await _notificationsPlugin.cancelAll();
+    log.log('All reminders cancelled', name: 'NotificationService');
+  }
+
+  /// Helper: Find next instance of [hour:minute]
+  tz.TZDateTime _nextInstance(int hour, int minute) {
+    final now = tz.TZDateTime.now(tz.local);
+
+    var date = tz.TZDateTime(
+        tz.local, now.year, now.month, now.day, hour, minute);
+
+    if (date.isBefore(now)) {
+      date = date.add(const Duration(days: 1));
+    }
+
+    return date;
+  }
+
+  /// Debug test notification
+  Future<void> showTestNotification() async {
+    if (!_isInitialized) await init();
+
+    await _notificationsPlugin.show(
+      999,
+      'Test Notification',
+      'If you see this, notifications are working! ✅',
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'daily_reminder', 
-          'Daily Reminder', 
-          channelDescription: 'Daily Bible reading reminder',
+          'test_channel',
+          'Test Notifications',
           importance: Importance.max,
           priority: Priority.high,
         ),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time,
     );
-  }
 
-  Future<void> cancelReminders() async {
-    await _notificationsPlugin.cancelAll();
-  }
-
-  tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
-    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    tz.TZDateTime scheduledDate =
-        tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
-    }
-    return scheduledDate;
+    log.log('Test notification shown', name: 'NotificationService');
   }
 }
