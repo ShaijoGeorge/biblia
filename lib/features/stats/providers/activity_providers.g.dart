@@ -45,4 +45,4 @@ final class ActivityLogProvider extends $FunctionalProvider<
   }
 }
 
-String _$activityLogHash() => r'1acbc0cdfdcee56c3e83e48441f82e0909a1230d';
+String _$activityLogHash() => r'868f9c70a976bc8f5531ca9896c242aa407e2537';

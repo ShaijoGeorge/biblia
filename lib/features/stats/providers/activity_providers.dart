@@ -1,9 +1,6 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:collection/collection.dart';
 import '../../reading/providers/reading_providers.dart';
 import '../../../data/bible_data.dart';
-import '../../../data/local/entities/reading_progress.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'activity_providers.g.dart';
@@ -57,6 +54,38 @@ Future<List<ActivityGroup>> activityLog(Ref ref) async {
   // Fetch ALL raw history (read only)
   final allHistory = await ref.watch(bibleRepositoryProvider).getAllProgressSnapshot();
   
+  // Detect Completed Books
+  final Map<int, DateTime> bookCompletionTimes = {};
+  
+  // Group history by book to check completion status
+  final historyByBook = groupBy(allHistory, (p) => p.bookId);
+  
+  for (final entry in historyByBook.entries) {
+    final bookId = entry.key;
+    final progressList = entry.value;
+    
+    // Find the book definition to get total chapters
+    final book = kBibleBooks.firstWhere((b) => b.id == bookId, orElse: () => kBibleBooks.first);
+
+    // Get unique read chapters
+    final readChapterSet = progressList.map((p) => p.chapterNumber).toSet();
+
+    // If all chapters are read, find the LATEST read time
+    if (readChapterSet.length >= book.chapters) {
+      final dates = progressList
+          .map((p) => p.readAt)
+          .where((d) => d != null)
+          .cast<DateTime>()
+          .toList();
+      
+      if (dates.isNotEmpty) {
+        dates.sort(); // Ascending
+        // The last date is when the book was "Finished"
+        bookCompletionTimes[bookId] = dates.last; 
+      }
+    }
+  }
+
   // Sort by Time DESC (Newest first)
   allHistory.sort((a, b) => (b.readAt ?? DateTime(0)).compareTo(a.readAt ?? DateTime(0)));
 
@@ -71,6 +100,16 @@ Future<List<ActivityGroup>> activityLog(Ref ref) async {
     if (entry.readAt == null) continue;
 
     final book = kBibleBooks.firstWhere((b) => b.id == entry.bookId);
+
+    // Check if THIS entry is the one that finished the book
+    bool isFinisher = false;
+    if (bookCompletionTimes.containsKey(book.id)) {
+      final finishTime = bookCompletionTimes[book.id];
+      // Compare timestamps (using a small delta for safety, or exact match)
+      if (entry.readAt!.isAtSameMomentAs(finishTime!)) {
+        isFinisher = true;
+      }
+    }
     
     // Check if we can add to the most recent group
     if (groups.isNotEmpty) {
@@ -89,7 +128,7 @@ Future<List<ActivityGroup>> activityLog(Ref ref) async {
       timestamp: entry.readAt!,
       book: book,
       chapters: [entry.chapterNumber],
-      // If we eventually group > 10 chapters in one go, we flag it as bulk in UI
+      isFinish: isFinisher,
     ));
   }
 
